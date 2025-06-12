@@ -258,8 +258,8 @@
         (let [result (u/mgu s-var-num string-schema)]
           (is (u/mgu-failure? result))
           (is (= (:mgu-failure result) :typeclass-mismatch))
-          (is (= (:s-var result) s-var-num))
-          (is (= (:schema result) string-schema))
+          (is (= (:schema-1 result) s-var-num))
+          (is (= (:schema-2 result) string-schema))
           (is (= (:missing-typeclasses result) [:number]))))
 
       (testing "s-var a [:number] with s-var b [:number :comparable]"
@@ -301,8 +301,8 @@
         (let [result (u/mgu s-var-num-comp s-var-num)]
           (is (u/mgu-failure? result))
           (is (= (:mgu-failure result) :typeclass-mismatch))
-          (is (= (:s-var result) s-var-num-comp))
-          (is (= (:schema result) s-var-num))
+          (is (= (:schema-1 result) s-var-num-comp))
+          (is (= (:schema-2 result) s-var-num))
           (is (= (:missing-typeclasses result) [:comparable]))))
 
       (testing "s-var a [:number] with s-var b [] (no typeclasses)"
@@ -385,8 +385,8 @@
                        unif-failure (get-in ex-data [::a/failure :unification-failure])]
                    (is (= :typeclass-mismatch (:mgu-failure unif-failure)))
                    ;; s-var 'a from id-num-schema might get a new gensym'd name after instantiation
-                   (is (= [:number] (:typeclasses (:s-var unif-failure))))
-                   (is (= {:type 'string?} (:schema unif-failure)))
+                   (is (= [:number] (:typeclasses (:schema-1 unif-failure))))
+                   (is (= {:type 'string?} (:schema-2 unif-failure)))
                    (is (= [:number] (:missing-typeclasses unif-failure))))))))
 
     (testing "Let binding, generalization, and application with pre-defined scheme"
@@ -440,8 +440,8 @@
                  (let [ex-data (ex-data e)
                        unif-failure (get-in ex-data [::a/failure :unification-failure])]
                    (is (= :typeclass-mismatch (:mgu-failure unif-failure)))
-                   (is (= (set [:number :comparable]) (set (:typeclasses (:s-var unif-failure)))))
-                   (is (= {:type :vector} (select-keys (:schema unif-failure) [:type])))))))))
+                   (is (= (set [:number :comparable]) (set (:typeclasses (:schema-1 unif-failure)))))
+                   (is (= {:type :vector} (select-keys (:schema-2 unif-failure) [:type])))))))))
 
     (testing "Error reporting for typeclass mismatch in infer-schema"
       (let [ast {:op :APP
@@ -463,7 +463,7 @@
               (is (= :typeclass-mismatch (:mgu-failure unification-failure-data)))
               ;; The symbol 'a might be gensym'd, so we check typeclasses and type only for s-var
               (is (= {:type :s-var, :typeclasses [:number]}
-                     (select-keys (:s-var unification-failure-data) [:type :typeclasses])))
-              (is (= {:type 'string?} (:schema unification-failure-data)))
+                     (select-keys (:schema-1 unification-failure-data) [:type :typeclasses])))
+              (is (= {:type 'string?} (:schema-2 unification-failure-data))) ;schema -> schema2
               (is (= [:number] (:missing-typeclasses unification-failure-data)))))))))
 ))

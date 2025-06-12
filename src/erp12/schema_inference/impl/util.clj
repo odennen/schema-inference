@@ -321,6 +321,16 @@
          (= (:type b) :maybe))
     [:maybe :maybe]
 
+    ; new s-var & s-var test? 
+    ;; (and (= (:type a) :s-var) (= (:type b) :s-var)) 
+    ;; (if (>= (count (:typeclasses a)) (count (:typeclasses b))) 
+    ;;   [:s-var :_]
+    ;;   [:_ :s-var])
+    
+    ; attempt 2
+    ;;(and (= (:type a) :s-var) (= (:type b) :s-var)) [:s-var :s-var]
+
+    ; swapping the order of this breaks stuff -- why?
     (= (:type a) :s-var) [:s-var :_]
     (= (:type b) :s-var) [:_ :s-var]
     :else [(:type a) (:type b)]))
@@ -352,25 +362,41 @@
 (defn- bind-var
   "Attempts to bind schematic variable s-var to schema.
   Performs occurs check and typeclass compatibility check (using global tc/typeclasses)."
-  [{:keys [sym typeclasses] :as s-var} schema]
+  [{:keys [sym typeclasses] :as s-var} schema] 
   (cond
     (= s-var schema) {}
 
     (contains? (free-type-vars schema) sym)
     {:mgu-failure :occurs-check
-     :schema-1    s-var
+     ; changed schema-1 and schema-2 --> s-var and schema
+     ; to match typeclass check keys
+     :schema-1     s-var
      :schema-2    schema}
+
+    ; put this somewhere
+    ;; (if (and (= (:type s-var) :s-var) (= (:type schema) :s-var))
+    ;;   (if (>= (count (:typeclasses s-var)) (count (:typeclasses schema)))))
 
     ;; Typeclass check
     (and (not-empty typeclasses)
-         (not (satisfies-all-typeclasses? schema typeclasses)))
+         (not (satisfies-all-typeclasses? schema typeclasses))) 
     (let [violated-typeclasses (filterv #(not (satisfies-all-typeclasses? schema [%])) typeclasses)]
       {:mgu-failure       :typeclass-mismatch
-       :s-var             s-var
-       :schema            schema
+       ; changed from :s-var and :schema --to--> :schema-1 and :schema-2
+       :schema-1             s-var
+       :schema-2            schema
        :missing-typeclasses violated-typeclasses})
 
     :else {sym schema}))
+
+;; attempt 2 (uncomment line in dispatch too)
+;; (defmethod mgu [:s-var :s-var]
+;;   ;; "Unifies a schema variable `a` with schema variable `b`."
+;;   [a b]
+;;   (if (>= (count (:typeclasses a)) (count (:typeclasses b)))  
+;;     (bind-var a b)
+;;     (bind-var b a))
+;; )
 
 (defmethod mgu [:s-var :_]
   ;; "Unifies a schema variable `a` with schema `b`."
