@@ -86,6 +86,7 @@
 (deftest free-type-vars-test
   (is (= #{'x} (u/free-type-vars {:type :s-var :sym 'x})))
   (is (= #{} (u/free-type-vars {:type 'string?})))
+
   (testing "function schemas"
     (is (= #{'x 'y} (u/free-type-vars {:type   :=>
                                        :input  {:type     :cat
@@ -98,6 +99,7 @@
                                        :output {:type :s-var :sym 'x}}))))
   (is (= #{}
          (u/free-type-vars {:type :map-of :key {:type 'int?} :value {:type 'string?}})))
+  
   (testing "scheme"
     (is (= #{'y}
            (u/free-type-vars {:type   :scheme
@@ -137,6 +139,7 @@
     (is (= (:type s) :vector))
     (is (= (get-in s [:child :type]) :s-var))
     (is (str/starts-with? (name (get-in s [:child :sym])) "s-")))
+  
   (testing "scheme with typeclasses"
     (let [scheme {:type   :scheme
                   :s-vars [{:sym 'x :typeclasses [:number]} {:sym 'y :typeclasses [:comparable]}]
@@ -154,6 +157,7 @@
       (is (= (:type s-var2) :s-var))
       (is (not= (:sym s-var2) 'y))             ; Fresh symbol
       (is (= (:typeclasses s-var2) [:comparable]))))
+  
   (testing "scheme with s-var having no typeclasses"
     (let [scheme {:type   :scheme
                   :s-vars [{:sym 'z'}] ; No typeclasses
@@ -178,6 +182,7 @@
            (u/generalize env
                          {:type  :vector
                           :child {:type :s-var :sym 'y}}))))
+  
   (testing "generalize schema with free s-vars having typeclasses"
     (let [env {'a {:type 'int?}} ; 'y and 'z are free in schema, not in env
           schema-to-generalize {:type     :tuple
@@ -191,6 +196,7 @@
       (is (= (get-in s-vars-map ['z :typeclasses]) [:comparable]))
       ;; generalize sorts s-vars by sym, so we sort original schema's s-vars for comparison if needed
       (is (= (:body generalized) schema-to-generalize))))
+  
   (testing "generalize schema where some s-vars with typeclasses are also in env"
     (let [env {'y {:type :s-var :sym 'y :typeclasses [:number]}} ; 'y is in env
           schema-to-generalize {:type     :tuple
@@ -203,6 +209,7 @@
       (is (nil? (get s-vars-map 'y))) ; 'y should not be generalized
       (is (= (get-in s-vars-map ['z :typeclasses]) [:comparable]))
       (is (= (:body generalized) schema-to-generalize))))
+  
   (testing "generalize a scheme (should instantiate first)"
     (let [env {}
           scheme-to-generalize {:type   :scheme
@@ -232,6 +239,7 @@
            {:mgu-failure :non-equal
             :schema-1    {:type 'int?}
             :schema-2    {:type 'string?}})))
+  
   (testing "s-vars"
     (is (= (u/mgu {:type :s-var :sym 'a}
                   {:type :s-var :sym 'b})
@@ -242,12 +250,14 @@
     (is (= (u/mgu {:type :s-var :sym 'a}
                   {:type :s-var :sym 'a})
            {})))
+  
   (testing "s-vars with typeclasses"
     (testing "s-var with concrete type - success"
       (is (= (u/mgu {:type :s-var :sym 'a :typeclasses [:number]} {:type 'int?})
              {'a {:type 'int?}}))
       (is (= (u/mgu {:type :s-var :sym 'a :typeclasses [:number :comparable]} {:type 'int?})
              {'a {:type 'int?}})))
+    
     (testing "s-var with concrete type - failure (typeclass mismatch)"
       (let [s-var {:type :s-var :sym 'a :typeclasses [:countable]}
             concrete-schema {:type 'int?}
@@ -256,6 +266,7 @@
         (is (= (:mgu-failure result) :typeclass-mismatch))
         (is (= (:schema-1 result) s-var))
         (is (= (:schema-2 result) concrete-schema))))
+    
     (testing "s-var with s-var - success"
       (let [s-var-a {:type :s-var :sym 'a :typeclasses [:number]}
             s-var-b {:type :s-var :sym 'b :typeclasses [:number :comparable]}]
@@ -273,9 +284,8 @@
         (is (= {'a s-var-constrained} (u/mgu s-var-unconstrained s-var-constrained)))
         ;; Order reversed, 'a' (now constrained) should bind 'b' (unconstrained)
         ; bad test, probably
-        #_(is (= {'b s-var-constrained} (u/mgu s-var-constrained s-var-unconstrained)
-               ))
-        ))
+        #_(is (= {'b s-var-constrained} (u/mgu s-var-constrained s-var-unconstrained)))))
+    
     (testing "s-var with s-var - failure (typeclass mismatch)"
       (let [s-var-a {:type :s-var :sym 'a :typeclasses [:number]}
             s-var-b {:type :s-var :sym 'b :typeclasses [:countable]}
@@ -296,6 +306,7 @@
             result (u/mgu s-var-b s-var-a)] ; This should succeed, 'b gets bound to 'a
             ; ^ swapped a and b in mgu call
         (is (= {'b s-var-a} result))))
+    
     (testing "occurs check with typeclasses"
       (let [s-var {:type :s-var :sym 'a :typeclasses [:number]}
             schema {:type :vector :child {:type :s-var :sym 'a :typeclasses [:number]}}
@@ -314,17 +325,7 @@
         ;(is (= {:type :s-var :sym 'a} (:schema-1 result))) ;; s-var from occurs check is the one in the structure
         (is (= s-var (:schema-1 result))) ; changes from schema (aka schema-2) to schema-1
         (is (= schema (:schema-2 result))))  ; added schema-2 test
-        )) 
-  
-  (comment
-    
-    (let [s-var {:type :s-var :sym 'a :typeclasses [:number]}
-          schema {:type :vector :child {:type :s-var :sym 'a}} ; s-var in schema has no TCs
-          result (u/mgu s-var schema)]
-      result
-      
-    )
-      )
+      )) 
 
   (testing "function types"
     (is (= (u/mgu {:type   :=>,
@@ -360,6 +361,7 @@
             :schema-1    {:type :s-var, :sym 'b}
             :schema-2    {:type  :vector
                           :child {:type :s-var, :sym 'b}}})))
+  
   (testing "map types"
     (is (= (u/mgu {:type  :map-of
                    :key   {:type 'string?}
@@ -369,6 +371,7 @@
                    :value {:type 'boolean?}})
            {'k {:type 'string?}
             'v {:type 'boolean?}})))
+  
   (testing "tuple types"
     (is (= (u/mgu {:type     :tuple
                    :children [{:type :s-var, :sym 'a}
@@ -385,10 +388,12 @@
                                {:type     :tuple
                                 :children [{:type 'string?}
                                            {:type :s-var, :sym 'b}]}))))
+  
   (testing "set types"
     (is (= (u/mgu {:type :set :child {:type :s-var, :sym 'a}}
                   {:type :set :child {:type 'int?}})
            {'a {:type 'int?}})))
+  
   (testing "unification within structured types with typeclasses"
     (is (= (u/mgu {:type :vector :child {:type :s-var :sym 'a :typeclasses [:number]}}
                   {:type :vector :child {:type 'int?}})
@@ -407,15 +412,18 @@
   (testing "simple s-var with typeclass"
     (is (= #{{:sym 'a :typeclasses [:number]}}
            (u/get-free-s-vars-defs {:type :s-var :sym 'a :typeclasses [:number]}))))
+  
   (testing "nested schema with s-vars with typeclasses"
     (is (= #{{:sym 'a :typeclasses [:number]} {:sym 'b :typeclasses [:countable]}}
            (u/get-free-s-vars-defs {:type :vector :child {:type :tuple :children [{:type :s-var :sym 'a :typeclasses [:number]} {:type :s-var :sym 'b :typeclasses [:countable]}]}}))))
+  
   (testing "function schema with s-vars with typeclasses in input and output"
     (is (= #{{:sym 'in :typeclasses [:map]} {:sym 'out :typeclasses [:vector]}}
            (u/get-free-s-vars-defs {:type   :=>
                                     :input  {:type     :cat
                                              :children [{:type :s-var :sym 'in :typeclasses [:map]}]}
                                     :output {:type :s-var :sym 'out :typeclasses [:vector]}}))))
+  
   (testing "scheme with bound and free s-vars with typeclasses"
     (is (= #{{:sym 'c :typeclasses [:comparable]}}
            (u/get-free-s-vars-defs {:type   :scheme
@@ -428,6 +436,7 @@
                                              :children [{:type :s-var :sym 'a :typeclasses [:number]}
                                                         {:type :s-var :sym 'x :typeclasses [:number]}
                                                         {:type :s-var :sym 'c :typeclasses [:comparable]}]}}))))
+  
   (testing "schema with no free s-vars with typeclasses"
     (is (= #{{:sym 'a}}
            (u/get-free-s-vars-defs {:type :s-var :sym 'a})))
@@ -437,6 +446,7 @@
                                     :body   {:type :s-var :sym 'x :typeclasses [:number]}})))
     (is (= #{}
            (u/get-free-s-vars-defs {:type 'int?}))))
+  
   (testing "schema with multiple distinct free s-vars with different typeclasses"
     (is (= #{{:sym 'a :typeclasses [:number]} {:sym 'b :typeclasses [:string]} {:sym 'c :typeclasses [:boolean]}}
            (u/get-free-s-vars-defs {:type :tuple
@@ -449,10 +459,12 @@
     (is (u/satisfies-all-typeclasses? {:type :s-var :sym 'a :typeclasses [:number :comparable]} [:number :comparable]))
     (is (u/satisfies-all-typeclasses? {:type :s-var :sym 'a :typeclasses [:number :comparable :countable]} [:number :comparable]))
     (is (not (u/satisfies-all-typeclasses? {:type :s-var :sym 'a :typeclasses [:number]} [:number :comparable])))
+
     ;; Current impl: unconstrained s-var satisfies any requirement.
     (is (u/satisfies-all-typeclasses? {:type :s-var :sym 'a} [:number]))
     (is (u/satisfies-all-typeclasses? {:type :s-var :sym 'a :typeclasses [:number]} []))
     (is (u/satisfies-all-typeclasses? {:type :s-var :sym 'a :typeclasses [:number]} nil)))
+
   (testing "concrete type schema"
     (is (u/satisfies-all-typeclasses? {:type 'int?} [:number]))
     (is (u/satisfies-all-typeclasses? {:type 'int?} [:number :comparable]))
@@ -466,12 +478,38 @@
     (is (not (u/satisfies-all-typeclasses? {:type 'int?} [:number :countable])))
     (is (u/satisfies-all-typeclasses? {:type 'int?} []))
     (is (u/satisfies-all-typeclasses? {:type 'int?} nil)))
+
   (testing "structured type schema"
     (is (u/satisfies-all-typeclasses? {:type :vector :child {:type 'int?}} [:countable]))
     (is (u/satisfies-all-typeclasses? {:type :set :child {:type 'string?}} [:countable]))
     (is (u/satisfies-all-typeclasses? {:type :map-of :key {:type 'keyword?} :value {:type 'int?}} [:countable]))
+
     ;; A vector of numbers is not itself a number.
     (is (not (u/satisfies-all-typeclasses? {:type :vector :child {:type 'int?}} [:number]))))
+
+  (testing "indexable type schema"
+    (is (u/satisfies-all-typeclasses? {:type :vector :child {:type 'int?}} [:indexable]))
+    (is (u/satisfies-all-typeclasses? {:type 'string?} [:indexable]))
+
+    ;; Sets and maps are not indexable
+    (is (not (u/satisfies-all-typeclasses? {:type :set :child {:type 'int?}} [:indexable])))
+    (is (not (u/satisfies-all-typeclasses? {:type :map-of :key {:type 'keyword?} :value {:type 'int?}} [:indexable])))
+    )
+
+  (testing "callable type schema"
+    (is (u/satisfies-all-typeclasses? {:type   :=>
+                                       :input  {:type     :cat
+                                                :children [{:type 'int?}]}
+                                       :output {:type 'float?}} [:callable]))
+    (is (u/satisfies-all-typeclasses? {:type :map-of :key {:type 'string?} :value {:type 'int?}} [:callable]))
+    (is (u/satisfies-all-typeclasses? {:type :set :child {:type 'int?}} [:callable]))
+    ;; Ints are not callable and functions are only callable
+    (is (not (u/satisfies-all-typeclasses? {:type 'int?} [:callable])))
+    (is (not (u/satisfies-all-typeclasses? {:type   :=>
+                                            :input  {:type     :cat
+                                                     :children [{:type 'int?}]}
+                                            :output {:type 'float?}} [:indexable]))))
+
   (testing "unknown typeclass keyword"
     ;; If an unknown typeclass is required, it cannot be satisfied.
     (is (not (u/satisfies-all-typeclasses? {:type 'int?} [:unknown-typeclass])))
